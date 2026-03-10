@@ -1,22 +1,164 @@
 # ── deploy.yml ────────────────────────────────────────────────────────────────
 # CI/CD Pipeline — AI-Powered Email Sorter
-# Status: STUB — completed in Task 1.2
+# Document: PROJ-EMAILSORT-001  Task: 1.2
 #
-# This file is committed now to establish the workflow file location and
-# satisfy GitHub's branch protection "require status checks" rule.
-# The full pipeline is implemented in Task 1.2.
+# Trigger:  push to main
+# Job 1:    test-and-build  — install, test, build React app, upload Pages artifact
+# Job 2:    deploy          — deploy Cloud Functions + Firestore, publish Pages
+#
+# Required GitHub Secrets (Settings → Secrets and variables → Actions):
+#   FIREBASE_TOKEN
+#   REACT_APP_FIREBASE_API_KEY
+#   REACT_APP_FIREBASE_AUTH_DOMAIN
+#   REACT_APP_FIREBASE_PROJECT_ID
+#   REACT_APP_FIREBASE_STORAGE_BUCKET
+#   REACT_APP_FIREBASE_MESSAGING_SENDER_ID
+#   REACT_APP_FIREBASE_APP_ID
+#   REACT_APP_FUNCTIONS_BASE_URL
+#   REACT_APP_GOOGLE_CLIENT_ID
+#   REACT_APP_MS_CLIENT_ID
+#   ANTHROPIC_API_KEY          ← functions only, never in frontend build
+#   ENCRYPTION_SECRET          ← functions only, never in frontend build
+# ─────────────────────────────────────────────────────────────────────────────
 
 name: Deploy
 
+# Cancel any in-progress run for the same branch when a new push arrives.
+# Prevents queued stale builds from deploying over a newer push.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+
+# Permissions required for GitHub Pages deployment via OIDC
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  placeholder:
+  # ── JOB 1: Test and Build ──────────────────────────────────────────────────
+  test-and-build:
+    name: Test and Build
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Pipeline stub — Task 1.2 will complete this
-        run: echo "CI/CD pipeline stub. Full implementation in Task 1.2."
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Cache frontend dependencies — keyed on package-lock.json
+      - name: Cache frontend node_modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: frontend-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: frontend-${{ runner.os }}-
+
+      # Cache functions dependencies — keyed on package-lock.json
+      - name: Cache functions node_modules
+        uses: actions/cache@v4
+        with:
+          path: functions/node_modules
+          key: functions-${{ runner.os }}-${{ hashFiles('functions/package-lock.json') }}
+          restore-keys: functions-${{ runner.os }}-
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test -- --watchAll=false --passWithNoTests
+        env:
+          CI: true
+
+      # Build the React app with all REACT_APP_* secrets injected.
+      # ANTHROPIC_API_KEY and ENCRYPTION_SECRET are intentionally NOT listed
+      # here — they must never appear in the frontend bundle.
+      - name: Build React app
+        working-directory: frontend
+        run: npm run build
+        env:
+          CI: false # prevents treating warnings as errors during build
+          REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
+          REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}
+          REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
+          REACT_APP_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_APP_ID }}
+          REACT_APP_FUNCTIONS_BASE_URL: ${{ secrets.REACT_APP_FUNCTIONS_BASE_URL }}
+          REACT_APP_GOOGLE_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_CLIENT_ID }}
+          REACT_APP_MS_CLIENT_ID: ${{ secrets.REACT_APP_MS_CLIENT_ID }}
+          REACT_APP_USE_EMULATORS: false
+
+      # Upload the build/ directory as a GitHub Pages artifact.
+      # The deploy job picks this up without needing a second build.
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/build
+
+  # ── JOB 2: Deploy ─────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: test-and-build # only runs if Job 1 succeeds
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy-pages.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Restore functions cache from Job 1 (avoids re-downloading)
+      - name: Cache functions node_modules
+        uses: actions/cache@v4
+        with:
+          path: functions/node_modules
+          key: functions-${{ runner.os }}-${{ hashFiles('functions/package-lock.json') }}
+          restore-keys: functions-${{ runner.os }}-
+
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      # Deploy Cloud Functions, Firestore security rules, and Firestore indexes.
+      # ANTHROPIC_API_KEY and ENCRYPTION_SECRET are passed here as Function
+      # runtime environment variables — they never touch the frontend build.
+      - name: Deploy Firebase (Functions + Firestore)
+        run: |
+          firebase deploy \
+            --only functions,firestore:rules,firestore:indexes \
+            --non-interactive \
+            --token "$FIREBASE_TOKEN"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ENCRYPTION_SECRET: ${{ secrets.ENCRYPTION_SECRET }}
+
+      # Publish the Pages artifact uploaded by Job 1
+      - name: Deploy to GitHub Pages
+        id: deploy-pages
+        uses: actions/deploy-pages@v4
