@@ -1,0 +1,52 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "emails",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folder",     "order": "ASCENDING"  },
+        { "fieldPath": "receivedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "emails",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folder",     "order": "ASCENDING" },
+        { "fieldPath": "confidence", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "emails",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isTrainingExample", "order": "ASCENDING" },
+        { "fieldPath": "folder",            "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "emails",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "syncedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rules",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "priority", "order": "ASCENDING" },
+        { "fieldPath": "enabled",  "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "training",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "folder",    "order": "ASCENDING"  },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

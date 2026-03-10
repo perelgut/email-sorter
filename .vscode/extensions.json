@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "firebase.vscode-firebase-explorer",
+    "eamodio.gitlens",
+    "pkief.material-icon-theme",
+    "dsznajder.es7-react-js-snippets",
+    "ms-vscode.vscode-js-profile-flame",
+    "formulahendry.auto-rename-tag"
+  ]
+}
