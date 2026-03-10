@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Sorter — Project Task Tracker</title>
+<style>
+  :root {
+    --navy:    #0A1628;
+    --deep:    #0D2137;
+    --mid:     #1A3A5C;
+    --blue:    #1E6091;
+    --accent:  #2196F3;
+    --teal:    #00BCD4;
+    --green:   #4CAF50;
+    --amber:   #FF9800;
+    --red:     #F44336;
+    --white:   #FFFFFF;
+    --offwhite:#E8F4FD;
+    --silver:  #B0C4D8;
+    --muted:   #7899AA;
+    --bg:      #F0F4F8;
+    --card:    #FFFFFF;
+    --border:  #D0DEF0;
+    --text:    #1A2A3A;
+    --subtext: #4A6080;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--navy);
+    border-bottom: 3px solid var(--accent);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+  header .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header .brand-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: 0.5px;
+  }
+  header .subtitle {
+    font-size: 11px;
+    color: var(--silver);
+    letter-spacing: 0.3px;
+  }
+  header .header-stats {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .hstat {
+    text-align: center;
+  }
+  .hstat-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .hstat-label {
+    font-size: 9px;
+    color: var(--silver);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .hstat-divider {
+    width: 1px;
+    height: 30px;
+    background: var(--mid);
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar-container {
+    background: var(--deep);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--mid);
+  }
+  .progress-label {
+    font-size: 11px;
+    color: var(--silver);
+    white-space: nowrap;
+    min-width: 110px;
+  }
+  .progress-track {
+    flex: 1;
+    height: 8px;
+    background: var(--mid);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--teal));
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+  .progress-pct {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 38px;
+    text-align: right;
+  }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    background: var(--white);
+    padding: 10px 24px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .filter-label {
+    font-size: 11px;
+    color: var(--subtext);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+  }
+  .filter-btn {
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--subtext);
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--white);
+    font-weight: 600;
+  }
+  .filter-spacer { flex: 1; }
+  .reset-btn {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--red);
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .reset-btn:hover { background: #FFF0F0; border-color: var(--red); }
+
+  /* ── MAIN CONTENT ── */
+  main {
+    padding: 20px 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ── PHASE CARD ── */
+  .phase-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s;
+  }
+  .phase-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 18px;
+    cursor: pointer;
+    user-select: none;
+    gap: 12px;
+  }
+  .phase-color-bar {
+    width: 5px;
+    height: 36px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .phase-num {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.7;
+    min-width: 60px;
+  }
+  .phase-name {
+    font-size: 15px;
+    font-weight: 700;
+    flex: 1;
+  }
+  .phase-week-badge {
+    font-size: 11px;
+    color: var(--subtext);
+    background: var(--offwhite);
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .phase-task-count {
+    font-size: 12px;
+    color: var(--subtext);
+    min-width: 70px;
+    text-align: right;
+  }
+  .phase-progress-mini {
+    min-width: 80px;
+    text-align: right;
+  }
+  .mini-track {
+    height: 5px;
+    background: #E0EAF4;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 3px;
+  }
+  .mini-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+  .mini-pct {
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .phase-toggle {
+    font-size: 12px;
+    color: var(--muted);
+    transition: transform 0.2s;
+    margin-left: 4px;
+  }
+  .phase-toggle.open { transform: rotate(180deg); }
+
+  /* ── TASK TABLE ── */
+  .task-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .task-table thead th {
+    background: #F0F4F8;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--subtext);
+    padding: 7px 14px;
+    text-align: left;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .task-table tbody tr {
+    border-bottom: 1px solid #EEF4FA;
+    transition: background 0.1s;
+  }
+  .task-table tbody tr:hover { background: #F8FBFF; }
+  .task-table tbody tr:last-child { border-bottom: none; }
+  .task-table td {
+    padding: 9px 14px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  /* ── STATUS BADGE ── */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    transition: opacity 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .status-badge:hover { opacity: 0.85; transform: scale(1.02); }
+  .status-badge:active { transform: scale(0.97); }
+  .status-badge.not-started { background: #E0E7EF; color: #4A6080; }
+  .status-badge.in-progress { background: #FFF3E0; color: #E65100; border: 1px solid #FFB74D; }
+  .status-badge.complete    { background: #E8F5E9; color: #2E7D32; border: 1px solid #81C784; }
+  .status-badge.blocked     { background: #FFEBEE; color: #C62828; border: 1px solid #EF9A9A; }
+
+  /* ── TASK ROW ELEMENTS ── */
+  .task-id {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.8;
+  }
+  .task-name { font-weight: 500; }
+  .task-name.complete { text-decoration: line-through; color: var(--muted); }
+  .week-chip {
+    font-size: 11px;
+    color: var(--subtext);
+    background: var(--offwhite);
+    padding: 2px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .notes-cell {
+    max-width: 280px;
+  }
+  .notes-input {
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: var(--text);
+    background: transparent;
+    font-family: inherit;
+    transition: border-color 0.15s, background 0.15s;
+    resize: none;
+    min-height: 28px;
+  }
+  .notes-input:hover { background: var(--offwhite); border-color: var(--border); }
+  .notes-input:focus { outline: none; background: var(--white); border-color: var(--accent); box-shadow: 0 0 0 2px rgba(33,150,243,0.1); }
+
+  /* ── PHASE BODY ── */
+  .phase-body { display: block; }
+  .phase-body.collapsed { display: none; }
+
+  /* ── PRIORITY DOT ── */
+  .priority-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    flex-shrink: 0;
+  }
+
+  /* ── LAST SAVED ── */
+  .save-indicator {
+    font-size: 10px;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .save-indicator.visible { opacity: 1; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 800px) {
+    .task-table th:nth-child(4),
+    .task-table td:nth-child(4) { display: none; }
+    header .header-stats { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">✉</div>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <h1>AI-Powered Email Sorter</h1>
+        <span style="font-size:10px;background:var(--mid);color:var(--silver);padding:2px 8px;border-radius:10px;letter-spacing:1px;">PROJ-EMAILSORT-001</span>
+      </div>
+      <div class="subtitle">Project Task Tracker · 7 Phases · 40 Tasks · 15 Weeks</div>
+    </div>
+  </div>
+  <div class="header-stats">
+    <div class="hstat-divider"></div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-total">0</div>
+      <div class="hstat-label">Total Tasks</div>
+    </div>
+    <div class="hstat-divider"></div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-complete" style="color:var(--green)">0</div>
+      <div class="hstat-label">Complete</div>
+    </div>
+    <div class="hstat-divider"></div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-inprogress" style="color:var(--amber)">0</div>
+      <div class="hstat-label">In Progress</div>
+    </div>
+    <div class="hstat-divider"></div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-blocked" style="color:var(--red)">0</div>
+      <div class="hstat-label">Blocked</div>
+    </div>
+    <div class="hstat-divider"></div>
+    <div class="save-indicator" id="save-indicator">
+      <span>✓</span><span>Saved</span>
+    </div>
+  </div>
+</header>
+
+<div class="progress-bar-container">
+  <div class="progress-label" id="progress-label">Overall Progress</div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+  <div class="progress-pct" id="progress-pct">0%</div>
+</div>
+
+<div class="filter-bar">
+  <span class="filter-label">Filter:</span>
+  <button class="filter-btn active" data-filter="all">All Tasks</button>
+  <button class="filter-btn" data-filter="not-started">Not Started</button>
+  <button class="filter-btn" data-filter="in-progress">In Progress</button>
+  <button class="filter-btn" data-filter="complete">Complete</button>
+  <button class="filter-btn" data-filter="blocked">Blocked</button>
+  <div class="filter-spacer"></div>
+  <button class="reset-btn" id="reset-btn" title="Reset all task statuses and notes">⚠ Reset All Data</button>
+</div>
+
+<main id="main-content"></main>
+
+<footer>
+  AI-Powered Email Sorter · PROJ-EMAILSORT-001 · v1.0 · 2026-03-10 · Task data persists in browser storage
+</footer>
+
+<script>
+// ── Project data ─────────────────────────────────────────────────────────────
+const PHASES = [
+  {
+    id: 1, name: "Foundation", weeks: "1–2", color: "#1565C0",
+    tasks: [
+      { id: "1.1", name: "GitHub repo + branch strategy",            week: 1 },
+      { id: "1.2", name: "GitHub Actions CI/CD pipeline",            week: 1 },
+      { id: "1.3", name: "Firebase project setup (Blaze + $0 cap)",  week: 1 },
+      { id: "1.4", name: "Firebase Auth + Google OAuth",             week: 1 },
+      { id: "1.5", name: "React app skeleton + routing",             week: 2 },
+      { id: "1.6", name: "Firestore rules + indexes",                week: 2 },
+      { id: "1.7", name: "Deploy authenticated shell to GitHub Pages",week: 2 },
+    ]
+  },
+  {
+    id: 2, name: "Gmail + AI Classification", weeks: "3–5", color: "#00695C",
+    tasks: [
+      { id: "2.1", name: "Gmail API integration (fetch/list)",       week: 3 },
+      { id: "2.2", name: "Cloud Function: syncEmails",               week: 3 },
+      { id: "2.3", name: "Claude Haiku classifier",                  week: 4 },
+      { id: "2.4", name: "Confidence scoring + thresholds",          week: 4 },
+      { id: "2.5", name: "React folder view + email list UI",        week: 4 },
+      { id: "2.6", name: "Firestore real-time listeners",            week: 5 },
+    ]
+  },
+  {
+    id: 3, name: "Full Email Actions", weeks: "6–7", color: "#6A1B9A",
+    tasks: [
+      { id: "3.1", name: "Read full email body (on demand)",         week: 6 },
+      { id: "3.2", name: "Recategorise email + record training signal",week:6 },
+      { id: "3.3", name: "Delete email (Firestore + Gmail Trash)",   week: 6 },
+      { id: "3.4", name: "Reply / Forward via Gmail API",            week: 7 },
+      { id: "3.5", name: "Mark email as training example",           week: 7 },
+      { id: "3.6", name: "Folder bulk actions (delete all, mark read)",week:7},
+    ]
+  },
+  {
+    id: 4, name: "Rules Engine", weeks: "8–9", color: "#E65100",
+    tasks: [
+      { id: "4.1", name: "Rule CRUD UI",                             week: 8 },
+      { id: "4.2", name: "Rule parser (one-time Claude call on save)",week: 8 },
+      { id: "4.3", name: "Rule engine in syncEmails (pre-AI filter)", week: 8 },
+      { id: "4.4", name: "Retrain from folder (training context builder)",week:9},
+    ]
+  },
+  {
+    id: 5, name: "Outlook Integration", weeks: "10–11", color: "#1B5E20",
+    tasks: [
+      { id: "5.1", name: "Microsoft Entra app registration",         week: 10 },
+      { id: "5.2", name: "Graph API token management (MSAL)",        week: 10 },
+      { id: "5.3", name: "Outlook message fetch + classification",   week: 11 },
+      { id: "5.4", name: "Outlook delete (Deleted Items folder)",    week: 11 },
+      { id: "5.5", name: "Reply / Forward via Microsoft Graph API",  week: 11 },
+    ]
+  },
+  {
+    id: 6, name: "IMAP / SMTP", weeks: "12–13", color: "#880E4F",
+    tasks: [
+      { id: "6.1", name: "IMAP credential storage + AES-256 encryption",week:12},
+      { id: "6.2", name: "IMAP fetch (imap + mailparser packages)",  week: 12 },
+      { id: "6.3", name: "SMTP reply/forward (nodemailer)",          week: 13 },
+      { id: "6.4", name: "IMAP EXPUNGE delete + UI warning dialog",  week: 13 },
+      { id: "6.5", name: "Add account wizard (all 3 providers)",     week: 13 },
+    ]
+  },
+  {
+    id: 7, name: "Polish & Production", weeks: "14–15", color: "#0D47A1",
+    tasks: [
+      { id: "7.1", name: "Error state UI + loading skeletons",       week: 14 },
+      { id: "7.2", name: "Firestore usage monitoring",               week: 14 },
+      { id: "7.3", name: "Claude API cost dashboard",                week: 14 },
+      { id: "7.4", name: "Cross-browser QA (Chrome, Firefox, Safari)",week:15 },
+      { id: "7.5", name: "README + developer setup documentation",   week: 15 },
+      { id: "7.6", name: "Final deployment + smoke test",            week: 15 },
+    ]
+  },
+];
+
+const STATUSES = ["not-started", "in-progress", "complete", "blocked"];
+const STATUS_LABELS = {
+  "not-started": "Not Started",
+  "in-progress": "In Progress",
+  "complete":    "Complete",
+  "blocked":     "Blocked"
+};
+const STATUS_ICONS = {
+  "not-started": "○",
+  "in-progress": "◑",
+  "complete":    "●",
+  "blocked":     "✕"
+};
+const STORAGE_KEY = "emailsorter_tracker_v1";
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let state = {};   // taskId → { status, notes }
+let activeFilter = "all";
+let saveTimer = null;
+
+function defaultState() {
+  const s = {};
+  PHASES.forEach(ph => ph.tasks.forEach(t => {
+    s[t.id] = { status: "not-started", notes: "" };
+  }));
+  return s;
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = parsed;
+    } else {
+      state = defaultState();
+    }
+  } catch(e) {
+    state = defaultState();
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    showSaved();
+  } catch(e) {
+    console.warn("Could not save:", e);
+  }
+}
+
+function showSaved() {
+  const el = document.getElementById("save-indicator");
+  el.classList.add("visible");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => el.classList.remove("visible"), 2000);
+}
+
+// ── Cycle status on click ─────────────────────────────────────────────────────
+function cycleStatus(taskId) {
+  const cur = state[taskId]?.status || "not-started";
+  const idx = STATUSES.indexOf(cur);
+  const next = STATUSES[(idx + 1) % STATUSES.length];
+  state[taskId].status = next;
+  saveState();
+  render();
+}
+
+// ── Notes update ──────────────────────────────────────────────────────────────
+function updateNotes(taskId, value) {
+  state[taskId].notes = value;
+  saveState();
+  // Update task name style without full re-render
+  const nameEl = document.getElementById(`name-${taskId}`);
+  if (nameEl) {
+    nameEl.className = "task-name" + (state[taskId].status === "complete" ? " complete" : "");
+  }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function getStats() {
+  let total = 0, complete = 0, inprogress = 0, blocked = 0, notstarted = 0;
+  PHASES.forEach(ph => ph.tasks.forEach(t => {
+    total++;
+    const s = state[t.id]?.status || "not-started";
+    if (s === "complete")    complete++;
+    if (s === "in-progress") inprogress++;
+    if (s === "blocked")     blocked++;
+    if (s === "not-started") notstarted++;
+  }));
+  return { total, complete, inprogress, blocked, notstarted };
+}
+
+function getPhaseStats(phase) {
+  let total = 0, complete = 0;
+  phase.tasks.forEach(t => {
+    total++;
+    if ((state[t.id]?.status || "not-started") === "complete") complete++;
+  });
+  return { total, complete, pct: total ? Math.round(complete / total * 100) : 0 };
+}
+
+// ── Collapse state ────────────────────────────────────────────────────────────
+const collapseState = {};  // phaseId → collapsed bool
+
+function togglePhase(phaseId) {
+  collapseState[phaseId] = !collapseState[phaseId];
+  const body = document.getElementById(`phase-body-${phaseId}`);
+  const toggle = document.getElementById(`phase-toggle-${phaseId}`);
+  if (body) {
+    body.className = "phase-body" + (collapseState[phaseId] ? " collapsed" : "");
+  }
+  if (toggle) {
+    toggle.className = "phase-toggle" + (collapseState[phaseId] ? "" : " open");
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const stats = getStats();
+
+  // Header stats
+  document.getElementById("stat-total").textContent = stats.total;
+  document.getElementById("stat-complete").textContent = stats.complete;
+  document.getElementById("stat-inprogress").textContent = stats.inprogress;
+  document.getElementById("stat-blocked").textContent = stats.blocked;
+
+  // Overall progress
+  const pct = stats.total ? Math.round(stats.complete / stats.total * 100) : 0;
+  document.getElementById("progress-fill").style.width = pct + "%";
+  document.getElementById("progress-pct").textContent = pct + "%";
+  document.getElementById("progress-label").textContent =
+    `Overall Progress — ${stats.complete} of ${stats.total} tasks complete`;
+
+  // Phase cards
+  const main = document.getElementById("main-content");
+  main.innerHTML = "";
+
+  PHASES.forEach(ph => {
+    const phStats = getPhaseStats(ph);
+    const isCollapsed = collapseState[ph.id] || false;
+
+    // Filter tasks
+    const visibleTasks = ph.tasks.filter(t => {
+      if (activeFilter === "all") return true;
+      return (state[t.id]?.status || "not-started") === activeFilter;
+    });
+    if (activeFilter !== "all" && visibleTasks.length === 0) return;
+
+    const card = document.createElement("div");
+    card.className = "phase-card";
+
+    card.innerHTML = `
+      <div class="phase-header" onclick="togglePhase(${ph.id})">
+        <div class="phase-color-bar" style="background:${ph.color}"></div>
+        <div class="phase-num" style="color:${ph.color}">Phase ${ph.id}</div>
+        <div class="phase-name">${ph.name}</div>
+        <div class="phase-week-badge">Weeks ${ph.weeks}</div>
+        <div class="phase-task-count">${phStats.complete}/${phStats.total} tasks</div>
+        <div class="phase-progress-mini">
+          <div class="mini-pct" style="color:${ph.color}">${phStats.pct}%</div>
+          <div class="mini-track">
+            <div class="mini-fill" style="width:${phStats.pct}%;background:${ph.color}"></div>
+          </div>
+        </div>
+        <span class="phase-toggle${isCollapsed ? "" : " open"}" id="phase-toggle-${ph.id}">▼</span>
+      </div>
+      <div class="phase-body${isCollapsed ? " collapsed" : ""}" id="phase-body-${ph.id}">
+        <table class="task-table">
+          <thead>
+            <tr>
+              <th style="width:60px">ID</th>
+              <th>Task</th>
+              <th style="width:72px">Week</th>
+              <th style="width:130px">Status</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(activeFilter === "all" ? ph.tasks : visibleTasks).map(t => {
+              const ts = state[t.id] || { status: "not-started", notes: "" };
+              const statusClass = ts.status;
+              const isComplete = ts.status === "complete";
+              return `<tr>
+                <td><span class="task-id" style="color:${ph.color}">${t.id}</span></td>
+                <td><span class="task-name${isComplete ? " complete" : ""}" id="name-${t.id}">${t.name}</span></td>
+                <td><span class="week-chip">Wk ${t.week}</span></td>
+                <td>
+                  <button class="status-badge ${statusClass}" onclick="cycleStatus('${t.id}')">
+                    <span>${STATUS_ICONS[ts.status]}</span>
+                    <span>${STATUS_LABELS[ts.status]}</span>
+                  </button>
+                </td>
+                <td class="notes-cell">
+                  <textarea class="notes-input" rows="1"
+                    placeholder="Add notes…"
+                    onchange="updateNotes('${t.id}', this.value)"
+                    oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+                  >${ts.notes}</textarea>
+                </td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>`;
+
+    main.appendChild(card);
+  });
+}
+
+// ── Filter buttons ────────────────────────────────────────────────────────────
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeFilter = btn.dataset.filter;
+    render();
+  });
+});
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+document.getElementById("reset-btn").addEventListener("click", () => {
+  if (confirm("Reset ALL task statuses and notes? This cannot be undone.")) {
+    state = defaultState();
+    saveState();
+    render();
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadState();
+render();
+</script>
+</body>
+</html>
