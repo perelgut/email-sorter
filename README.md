@@ -2,7 +2,7 @@
 
 > Automated email classification and management using the Anthropic Claude API.
 
-[![Deploy to GitHub Pages](https://github.com/{YOUR_GITHUB_USERNAME}/email-sorter/actions/workflows/deploy.yml/badge.svg)](https://github.com/{YOUR_GITHUB_USERNAME}/email-sorter/actions/workflows/deploy.yml)
+[![Deploy to GitHub Pages](https://github.com/perelgut/email-sorter/actions/workflows/deploy.yml/badge.svg)](https://github.com/perelgut/email-sorter/actions/workflows/deploy.yml)
 
 ---
 
