@@ -1,15 +1,37 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0A1628" />
-    <meta name="description" content="AI-Powered Email Sorter — intelligent email classification" />
+    <meta
+      name="description"
+      content="AI-Powered Email Sorter — intelligent email classification"
+    />
     <title>AI-Powered Email Sorter</title>
+    <script>
+      // Restore path saved by 404.html redirect
+      (function () {
+        var redirect = sessionStorage.getItem("spa_redirect");
+        if (redirect) {
+          sessionStorage.removeItem("spa_redirect");
+          window.history.replaceState(null, null, "/email-sorter" + redirect);
+        }
+      })();
+    </script>
     <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #0A1628; font-family: 'Segoe UI', system-ui, sans-serif; }
-      #root { min-height: 100vh; }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: #0a1628;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      #root {
+        min-height: 100vh;
+      }
     </style>
   </head>
   <body>
