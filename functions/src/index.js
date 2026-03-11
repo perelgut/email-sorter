@@ -14,23 +14,10 @@ const { google } = require("googleapis");
 const anthropicKey = defineSecret("ANTHROPIC_API_KEY");
 const encryptionSecret = defineSecret("ENCRYPTION_SECRET");
 
-// Allowed redirect URIs — must match Google Cloud Console exactly
 const ALLOWED_REDIRECT_URIS = [
   "https://perelgut.github.io/email-sorter/auth/gmail/callback",
   "http://localhost:3000/email-sorter/auth/gmail/callback",
 ];
-
-// ── healthCheck ───────────────────────────────────────────────────────────────
-exports.healthCheck = onCall(
-  { timeoutSeconds: 10, memory: "128MiB" },
-  (request) => {
-    return {
-      status: "ok",
-      task: "Phase 2 — Gmail + AI Classification",
-      timestamp: new Date().toISOString(),
-    };
-  },
-);
 
 // ── connectGmail ──────────────────────────────────────────────────────────────
 exports.connectGmail = onCall(
@@ -41,7 +28,6 @@ exports.connectGmail = onCall(
 
     if (!code) throw new HttpsError("invalid-argument", "Missing auth code");
 
-    // Validate redirect URI against allowlist
     if (!redirectUri || !ALLOWED_REDIRECT_URIS.includes(redirectUri)) {
       console.error(`Rejected redirect URI: ${redirectUri}`);
       throw new HttpsError("invalid-argument", "Invalid redirect URI");
@@ -60,7 +46,11 @@ exports.connectGmail = onCall(
     } catch (err) {
       console.error(
         "Gmail token exchange failed:",
-        err.message,
+        JSON.stringify({
+          message: err.message,
+          code: err.code,
+          response: err?.response?.data,
+        }),
         "redirect_uri:",
         redirectUri,
       );
