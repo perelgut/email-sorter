@@ -2,10 +2,14 @@
 // Wrapper for calling Firebase Cloud Functions from the frontend.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
+import {
+  getFunctions,
+  httpsCallable,
+  connectFunctionsEmulator,
+} from "firebase/functions";
 import { app } from "../firebase";
 
-const functions = getFunctions(app, "northamerica-northeast2");
+const functions = getFunctions(app, "us-central1");
 
 if (process.env.REACT_APP_USE_EMULATORS === "true") {
   connectFunctionsEmulator(functions, "localhost", 5001);
@@ -18,7 +22,7 @@ if (process.env.REACT_APP_USE_EMULATORS === "true") {
  * @returns {Promise<any>} response data
  */
 export async function callFunction(name, data = {}) {
-  const fn     = httpsCallable(functions, name);
+  const fn = httpsCallable(functions, name);
   const result = await fn(data);
   return result.data;
 }
