@@ -16,7 +16,14 @@ const { classifyEmail } = require("../classifier/classify");
  */
 async function runSync(uid, maxPerAccount = 30) {
   const db = getFirestore();
-  const results = { synced: 0, skipped: 0, errors: [], claudeCalls: 0, tokensIn: 0, tokensOut: 0 };
+  const results = {
+    synced: 0,
+    skipped: 0,
+    errors: [],
+    claudeCalls: 0,
+    tokensIn: 0,
+    tokensOut: 0,
+  };
 
   // ── 1. Load all connected accounts ───────────────────────────────────────
   const accountsSnap = await db
@@ -37,10 +44,12 @@ async function runSync(uid, maxPerAccount = 30) {
         case "gmail":
           return fetchMessages(uid, accountSnap, db, maxPerAccount);
         default:
-          console.warn(`Unknown provider: ${provider} for account ${accountSnap.id}`);
+          console.warn(
+            `Unknown provider: ${provider} for account ${accountSnap.id}`,
+          );
           return Promise.resolve([]);
       }
-    })
+    }),
   );
 
   // Collect messages and record account-level errors
@@ -50,16 +59,29 @@ async function runSync(uid, maxPerAccount = 30) {
     if (result.status === "fulfilled") {
       allMessages.push(...result.value);
       // Clear any previous error
-      accountSnap.ref.update({ lastError: null, lastSyncAt: new Date() }).catch(() => {});
+      accountSnap.ref
+        .update({ lastError: null, lastSyncAt: new Date() })
+        .catch(() => {});
     } else {
-      console.error(`Fetch failed for account ${accountSnap.id}:`, result.reason?.message);
-      results.errors.push({ accountId: accountSnap.id, message: result.reason?.message ?? "Unknown error" });
-      accountSnap.ref.update({ lastError: result.reason?.message ?? "Sync failed" }).catch(() => {});
+      console.error(
+        `Fetch failed for account ${accountSnap.id}:`,
+        result.reason?.message,
+      );
+      results.errors.push({
+        accountId: accountSnap.id,
+        message: result.reason?.message ?? "Unknown error",
+      });
+      accountSnap.ref
+        .update({ lastError: result.reason?.message ?? "Sync failed" })
+        .catch(() => {});
     }
   });
 
   if (allMessages.length === 0) {
-    await db.doc(`users/${uid}`).update({ lastSyncAt: FieldValue.serverTimestamp() }).catch(() => {});
+    await db
+      .doc(`users/${uid}`)
+      .update({ lastSyncAt: FieldValue.serverTimestamp() })
+      .catch(() => {});
     return results;
   }
 
@@ -67,11 +89,12 @@ async function runSync(uid, maxPerAccount = 30) {
   // Batch existence checks — query by providerId for each message
   const existingSnaps = await Promise.allSettled(
     allMessages.map((msg) =>
-      db.collection(`users/${uid}/emails`)
+      db
+        .collection(`users/${uid}/emails`)
         .where("providerId", "==", msg.providerId)
         .limit(1)
-        .get()
-    )
+        .get(),
+    ),
   );
 
   const newMessages = allMessages.filter((_, i) => {
@@ -82,13 +105,16 @@ async function runSync(uid, maxPerAccount = 30) {
   results.skipped = allMessages.length - newMessages.length;
 
   if (newMessages.length === 0) {
-    await db.doc(`users/${uid}`).update({ lastSyncAt: FieldValue.serverTimestamp() }).catch(() => {});
+    await db
+      .doc(`users/${uid}`)
+      .update({ lastSyncAt: FieldValue.serverTimestamp() })
+      .catch(() => {});
     return results;
   }
 
   // ── 4. Classify each new message ──────────────────────────────────────────
   const classifications = await Promise.allSettled(
-    newMessages.map((msg) => classifyEmail(msg, uid))
+    newMessages.map((msg) => classifyEmail(msg, uid)),
   );
 
   // ── 5. Batch write email documents ────────────────────────────────────────
@@ -98,34 +124,43 @@ async function runSync(uid, maxPerAccount = 30) {
 
   for (let i = 0; i < newMessages.length; i++) {
     const msg = newMessages[i];
-    const cls = classifications[i].status === "fulfilled"
-      ? classifications[i].value
-      : { folder: "uncategorized", confidence: 0.0, classifiedBy: "ai", tokensIn: 0, tokensOut: 0 };
+    const cls =
+      classifications[i].status === "fulfilled"
+        ? classifications[i].value
+        : {
+            folder: "uncategorized",
+            confidence: 0.0,
+            needsReview: true,
+            classifiedBy: "ai",
+            tokensIn: 0,
+            tokensOut: 0,
+          };
 
-    results.tokensIn  += cls.tokensIn  ?? 0;
+    results.tokensIn += cls.tokensIn ?? 0;
     results.tokensOut += cls.tokensOut ?? 0;
     if (cls.classifiedBy === "ai") results.claudeCalls++;
 
     const emailRef = db.collection(`users/${uid}/emails`).doc(msg.providerId);
     batch.set(emailRef, {
-      providerId:    msg.providerId,
-      provider:      msg.provider,
-      accountId:     msg.accountId,
-      threadId:      msg.threadId ?? null,
-      messageId:     msg.messageId ?? null,
-      from:          msg.from,
-      fromName:      msg.fromName,
-      subject:       msg.subject,
-      snippet:       msg.snippet,
-      receivedAt:    msg.receivedAt,
-      folder:        cls.folder,
-      confidence:    cls.confidence,
-      classifiedBy:  cls.classifiedBy,
+      providerId: msg.providerId,
+      provider: msg.provider,
+      accountId: msg.accountId,
+      threadId: msg.threadId ?? null,
+      messageId: msg.messageId ?? null,
+      from: msg.from,
+      fromName: msg.fromName,
+      subject: msg.subject,
+      snippet: msg.snippet,
+      receivedAt: msg.receivedAt,
+      folder: cls.folder,
+      confidence: cls.confidence,
+      needsReview: cls.needsReview, // ← 2.4: written to Firestore
+      classifiedBy: cls.classifiedBy,
       matchedRuleId: cls.matchedRuleId ?? null,
-      isRead:        false,
+      isRead: false,
       isTrainingExample: false,
-      bodyText:      null,
-      syncedAt:      FieldValue.serverTimestamp(),
+      bodyText: null,
+      syncedAt: FieldValue.serverTimestamp(),
     });
     batchCount++;
     results.synced++;
@@ -133,7 +168,7 @@ async function runSync(uid, maxPerAccount = 30) {
     // Commit batch when it hits the size limit
     if (batchCount >= BATCH_SIZE) {
       await batch.commit();
-      batch      = db.batch();
+      batch = db.batch();
       batchCount = 0;
     }
   }
@@ -142,9 +177,14 @@ async function runSync(uid, maxPerAccount = 30) {
   if (batchCount > 0) await batch.commit();
 
   // ── 6. Update user lastSyncAt ─────────────────────────────────────────────
-  await db.doc(`users/${uid}`).update({ lastSyncAt: FieldValue.serverTimestamp() }).catch(() => {});
+  await db
+    .doc(`users/${uid}`)
+    .update({ lastSyncAt: FieldValue.serverTimestamp() })
+    .catch(() => {});
 
-  console.log(`Sync complete for ${uid}: synced=${results.synced} skipped=${results.skipped} claudeCalls=${results.claudeCalls}`);
+  console.log(
+    `Sync complete for ${uid}: synced=${results.synced} skipped=${results.skipped} claudeCalls=${results.claudeCalls}`,
+  );
   return results;
 }
 

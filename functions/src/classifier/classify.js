@@ -15,7 +15,14 @@ const VALID_FOLDERS = [
   "spam",
   "uncategorized",
 ];
+
+// ── Confidence thresholds ─────────────────────────────────────────────────────
+// CONFIDENCE_THRESHOLD : minimum score to trust a folder assignment.
+//   Below this → folder forced to "uncategorized" + needsReview = true.
+// REVIEW_THRESHOLD     : emails above CONFIDENCE_THRESHOLD but still uncertain
+//   enough to warrant a soft review flag (no folder override).
 const CONFIDENCE_THRESHOLD = 0.6;
+const REVIEW_THRESHOLD = 0.75;
 
 const SYSTEM_PROMPT = `You are an email classification engine. Classify the email into exactly one of these folders: work, students, newsletters, receipts, personal, spam, uncategorized.
 
@@ -34,16 +41,42 @@ Rules:
 - uncategorized: unclear or low confidence`;
 
 /**
+ * Derive a needsReview flag from confidence and folder assignment.
+ *
+ * needsReview is true when:
+ *   (a) confidence < CONFIDENCE_THRESHOLD  → folder was forced to uncategorized, OR
+ *   (b) confidence < REVIEW_THRESHOLD      → folder was assigned but uncertain
+ *
+ * @param {number} confidence
+ * @param {string} finalFolder  - the folder after threshold enforcement
+ * @param {string} rawFolder    - the folder Claude originally suggested
+ * @returns {boolean}
+ */
+function deriveNeedsReview(confidence, finalFolder, rawFolder) {
+  if (confidence < CONFIDENCE_THRESHOLD) return true; // (a) forced to uncategorized
+  if (confidence < REVIEW_THRESHOLD) return true; // (b) placed but uncertain
+  return false;
+}
+
+/**
  * Classify a single email using Claude Haiku.
  *
  * @param {Object} message - { from, fromName, subject, snippet }
  * @param {string} uid - Firebase Auth UID (used to fetch training context)
- * @returns {Promise<{folder: string, confidence: number, classifiedBy: string, tokensIn: number, tokensOut: number}>}
+ * @returns {Promise<{
+ *   folder:       string,
+ *   confidence:   number,
+ *   needsReview:  boolean,
+ *   classifiedBy: string,
+ *   tokensIn:     number,
+ *   tokensOut:    number
+ * }>}
  */
 async function classifyEmail(message, uid) {
   const fallback = {
     folder: "uncategorized",
     confidence: 0.0,
+    needsReview: true, // errors always need review
     classifiedBy: "ai",
     tokensIn: 0,
     tokensOut: 0,
@@ -88,7 +121,7 @@ async function classifyEmail(message, uid) {
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
-    const folder = VALID_FOLDERS.includes(parsed.folder)
+    const rawFolder = VALID_FOLDERS.includes(parsed.folder)
       ? parsed.folder
       : "uncategorized";
     const confidence =
@@ -96,13 +129,17 @@ async function classifyEmail(message, uid) {
         ? Math.max(0, Math.min(1, parsed.confidence))
         : 0.0;
 
-    // Enforce confidence threshold
+    // Enforce confidence threshold → folder override
     const finalFolder =
-      confidence >= CONFIDENCE_THRESHOLD ? folder : "uncategorized";
+      confidence >= CONFIDENCE_THRESHOLD ? rawFolder : "uncategorized";
+
+    // Derive review flag
+    const needsReview = deriveNeedsReview(confidence, finalFolder, rawFolder);
 
     return {
       folder: finalFolder,
       confidence,
+      needsReview,
       classifiedBy: "ai",
       tokensIn,
       tokensOut,
@@ -116,4 +153,4 @@ async function classifyEmail(message, uid) {
   }
 }
 
-module.exports = { classifyEmail };
+module.exports = { classifyEmail, CONFIDENCE_THRESHOLD, REVIEW_THRESHOLD };
