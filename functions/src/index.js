@@ -13,6 +13,8 @@ const { google } = require("googleapis");
 
 const anthropicKey = defineSecret("ANTHROPIC_API_KEY");
 const encryptionSecret = defineSecret("ENCRYPTION_SECRET");
+const googleClientId = defineSecret("GOOGLE_CLIENT_ID");
+const googleClientSecret = defineSecret("GOOGLE_CLIENT_SECRET");
 
 const ALLOWED_REDIRECT_URIS = [
   "https://perelgut.github.io/email-sorter/auth/gmail/callback",
@@ -21,7 +23,11 @@ const ALLOWED_REDIRECT_URIS = [
 
 // ── connectGmail ──────────────────────────────────────────────────────────────
 exports.connectGmail = onCall(
-  { timeoutSeconds: 30, memory: "256MiB", secrets: [encryptionSecret] },
+  {
+    timeoutSeconds: 30,
+    memory: "256MiB",
+    secrets: [encryptionSecret, googleClientId, googleClientSecret],
+  },
   async (request) => {
     const uid = verifyToken(request.auth);
     const { code, redirectUri } = request.data;
@@ -88,7 +94,12 @@ exports.syncEmails = onCall(
   {
     timeoutSeconds: 300,
     memory: "512MiB",
-    secrets: [anthropicKey, encryptionSecret],
+    secrets: [
+      anthropicKey,
+      encryptionSecret,
+      googleClientId,
+      googleClientSecret,
+    ],
   },
   async (request) => {
     const uid = verifyToken(request.auth);
